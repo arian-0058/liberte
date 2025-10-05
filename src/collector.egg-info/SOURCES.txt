@@ -1,0 +1,6 @@
+pyproject.toml
+src/__init__.py
+src/collector.egg-info/PKG-INFO
+src/collector.egg-info/SOURCES.txt
+src/collector.egg-info/dependency_links.txt
+src/collector.egg-info/top_level.txt

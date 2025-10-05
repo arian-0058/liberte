@@ -1,0 +1,20 @@
+sources:
+  dex_ws_url: "ws://host.docker.internal:8765"
+  sol_ws_urls:
+    - "ws://host.docker.internal:8765"
+
+kafka:
+  bootstrap_servers: "kafka:9092"
+  topics:
+    new_tokens: "new_tokens"
+
+vault:
+  url: "http://vault:8200"
+  token: "dev-token"
+  secrets_path: "collector" 
+
+filters:
+  min_liquidity_usd: 1000
+
+prometheus:
+  port: 8000
