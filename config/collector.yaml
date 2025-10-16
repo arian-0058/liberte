@@ -1,20 +1,21 @@
-sources:
-  dex_ws_url: "ws://host.docker.internal:8765"
-  sol_ws_urls:
-    - "ws://host.docker.internal:8765"
-
+# I:\liberte\config\collector.yaml
 kafka:
+  # داخل Docker حتماً نام سرویس را بزن، نه localhost
   bootstrap_servers: "kafka:9092"
   topics:
     new_tokens: "new_tokens"
 
+sources:
+  # چون Collector داخل Docker اجرا می‌شود و WS روی ویندوز است:
+  dex_ws_url: "ws://host.docker.internal:8765"
+  sol_ws_urls: []
+
 vault:
+  # داخل Docker باید اسم سرویس Vault باشد
   url: "http://vault:8200"
-  token: "dev-token"
-  secrets_path: "collector" 
+  token: "root"               # dev mode
+  secrets_path: "collector"
 
 filters:
+  # فیلتر سبک برای تست (بعداً سختگیرترش می‌کنیم)
   min_liquidity_usd: 1000
-
-prometheus:
-  port: 8000

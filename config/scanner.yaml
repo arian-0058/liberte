@@ -1,0 +1,33 @@
+kafka:
+  bootstrap_servers: "kafka:9092"
+  topics:
+    new_tokens: "new_tokens"
+    filtered_tokens: "filtered_tokens"
+
+sources:
+  dex_ws_url: "ws://host.docker.internal:8765"
+  sol_ws_urls:
+    - "wss://api.mainnet-beta.solana.com"
+
+filters:
+  min_liquidity_usd: 0
+  max_creator_share: 1
+  min_volume_5m: 0
+  allow_missing_creator_share: true
+  allow_missing_volume_5m: true
+
+prometheus:
+  port: 8001
+
+vault:
+  url: "http://vault:8200"
+  token: "root"
+  secrets_path: "scanner"
+
+telegram:
+  enabled: false
+  chat_id: ""
+  vault:
+    url: "http://vault:8200"
+    token: "root"
+    secrets_path: "telegram"

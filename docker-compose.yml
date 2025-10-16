@@ -1,59 +1,140 @@
-version: "3.9"
+version: "3.8"
 
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
+    container_name: liberte-zookeeper-1
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_CLIENT_PORT: 22181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"
+      - "22181:22181"
+    restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
+    container_name: liberte-kafka-1
     depends_on:
       - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
     ports:
       - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:22181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    restart: unless-stopped
 
   postgres:
     image: postgres:15
+    container_name: liberte-postgres-1
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: trading_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "@123#246!"
+      POSTGRES_DB: liberte
     ports:
       - "5432:5432"
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
 
   vault:
     image: hashicorp/vault:1.15
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: dev-token
-      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    container_name: liberte-vault-1
     ports:
       - "8200:8200"
-    cap_add:
-      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8200/v1/sys/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  vault-seeder:
+    image: curlimages/curl:8.10.1
+    container_name: liberte-vault-seeder-1
+    depends_on:
+      vault:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "⏳ Waiting for Vault...";
+        until curl -fsS http://vault:8200/v1/sys/health | grep -E '"initialized":true' >/dev/null; do sleep 1; done
+        echo "🔐 Seeding secrets..."
+        curl -fsS -H "X-Vault-Token: root" -H "Content-Type: application/json" \
+          -X POST -d '{"data":{"kafka_bootstrap":"kafka:9092","vault_test_key":"connected"}}' \
+          http://vault:8200/v1/secret/data/collector || exit 1
+        curl -fsS -H "X-Vault-Token: root" -H "Content-Type: application/json" \
+          -X POST -d '{"data":{"kafka_bootstrap":"kafka:9092","vault_test_key":"connected"}}' \
+          http://vault:8200/v1/secret/data/scanner || exit 1
+        curl -fsS -H "X-Vault-Token: root" -H "Content-Type: application/json" \
+          -X POST -d '{"data":{"kafka_bootstrap":"kafka:9092","birdeye_api_key":"mock_key_execution","telegram_bot_token":"mock_bot_execution","vault_test_key":"connected"}}' \
+          http://vault:8200/v1/secret/data/execution || exit 1
+        echo "✅ Vault seeding complete."
+    restart: "no"
+
+  prometheus:
+    image: prom/prometheus
+    container_name: liberte-prometheus-1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
 
   collector:
     build: .
+    container_name: liberte-collector-1
+    command: poetry run python /app/src/collector/collector.py
     depends_on:
       - kafka
       - vault
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: dev-token
-      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
-      VAULT_API_ADDR: "http://vault:8200"
-      PYTHONUNBUFFERED: 1
     ports:
       - "8000:8000"
-    command: poetry run python src/collector/collector.py
+    volumes:
+      - .:/app
+      - ./config:/app/config
+      - ./scripts:/app/scripts          # ✅ اضافه شد
+    restart: unless-stopped
+
+  scanner:
+    build: .
+    container_name: liberte-scanner-1
+    command: poetry run python /app/src/scanner/scanner.py
+    depends_on:
+      - kafka
+      - vault
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+      - ./config:/app/config
+      - ./scripts:/app/scripts          # ✅ اضافه شد
+    restart: unless-stopped
+
+  execution:
+    build: .
+    container_name: liberte-execution-1
+    command: poetry run python /app/src/execution/execution_stub.py
+    depends_on:
+      - kafka
+      - postgres
+      - vault
+    ports:
+      - "8002:8002"
+    volumes:
+      - .:/app
+      - ./config:/app/config
+      - ./scripts:/app/scripts          # ✅ اضافه شد
+    restart: unless-stopped
+
+volumes:
+  vault-secrets:

@@ -110,7 +110,7 @@ def normalize_dex_event(raw: dict) -> dict | None:
 async def main():
     secrets = await get_vault_secrets()
     producer = await init_kafka_producer()
-    start_http_server(8000)
+    start_http_server(8000, addr="0.0.0.0")
     tasks = []
     try:
         tasks.append(asyncio.create_task(ws_reconnect_handler(

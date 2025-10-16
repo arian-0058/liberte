@@ -1,0 +1,66 @@
+# ===============================
+# Execution Stub Configuration (FINAL FULLY MATCHED)
+# ===============================
+
+service:
+  name: execution_stub
+  port: 8002
+
+# Kafka config
+kafka:
+  host: kafka
+  port: 9092
+  bootstrap_servers: "kafka:9092"
+  topics:
+    filtered_tokens: filtered_tokens
+
+# Database config (must be 'db' not 'database')
+db:
+  dsn: "postgresql://postgres:%40123%23246%21@postgres:5432/liberte"
+
+# ROI windows (seconds)
+roi_windows:
+  - 300
+  - 900
+  - 3600
+
+# Birdeye / Price feed
+birdeye:
+  mock:
+    enabled: true
+    default_price: 1.0
+  api_url: "https://public-api.birdeye.so"
+  api_key: null
+
+price_feed:
+  chain: solana
+  source: birdeye
+
+# Vault config
+vault:
+  enabled: true
+  url: http://vault:8200
+  token: root
+  secrets_paths:
+    birdeye: execution
+    telegram: execution
+
+# Telegram config (optional)
+telegram:
+  enabled: false
+  chat_id: null
+  message_templates:
+    new_signal: "🚀 New Token: {token} | price {price}$"
+    roi_update: "📈 ROI {window}s: {roi:.2f}%"
+
+# Prometheus metrics
+prometheus:
+  port: 8002
+  metrics:
+    - exec_simulated_trades_total
+    - exec_avg_roi
+
+# Logging
+logging:
+  level: INFO
+  format: json

@@ -1,0 +1,33 @@
+version: "2.0.0"
+weights:
+  roi_5m: 0.30
+  roi_15m: 0.25
+  roi_1h: 0.20
+  volatility: -0.10
+  slope: 0.15
+scoring:
+  min_score: -1.0
+  max_score: 1.0
+roi:
+  timeframes: ["5m", "15m", "1h"]
+  min_points: 8
+hot_reload:
+  interval_seconds: 60
+kafka:
+  input_topic: "filtered_tokens"
+  output_topic: "scored_tokens"
+  group_id: "score-engine-v2"
+  client_id: "liberte-score-engine"
+db:
+  pool_min_size: 2
+  pool_max_size: 10
+server:
+  host: "0.0.0.0"
+  port: 8003
+metrics:
+  namespace: "liberte"
+  subsystem: "score_engine"
+vault:
+  keys:
+    postgres_dsn: "POSTGRES_DSN"
+    kafka_bootstrap_servers: "KAFKA_BOOTSTRAP_SERVERS"
