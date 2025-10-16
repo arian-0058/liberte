@@ -11,24 +11,27 @@ services:
       - "22181:22181"
     restart: unless-stopped
 
-  kafka:
+  kafka: 
     image: confluentinc/cp-kafka:7.6.1
     container_name: liberte-kafka-1
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
-      - "9093:9093"
+      - "9092:9092"   # listener داخل شبکه داکر
+      - "9093:9093"   # listener قابل دسترس از ویندوز/هاست
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:22181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:22181   # مطمئن شو سرویس zookeeper همین پورت رو اکسپوز کرده
+      # دو لیسنر: یکی داخلی، یکی بیرونی
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      # داخلی: kafka:9092  | بیرونی: localhost:9093  (از دید "کلاینت بیرون" یعنی ویندوز)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     restart: unless-stopped
+
 
   postgres:
     image: postgres:15
@@ -135,6 +138,20 @@ services:
       - ./config:/app/config
       - ./scripts:/app/scripts          # ✅ اضافه شد
     restart: unless-stopped
+
+  score_engine:
+    image: python:3.11
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: bash -c "poetry install && poetry run python src/score_engine/score_engine.py"
+    environment:
+      SCORE_ENGINE_CONFIG: /app/config/score_engine.yaml
+    ports:
+      - "8003:8003"
+    depends_on:
+      - kafka  # فرض بر این که سرویس kafka از قبل تعریف شده است
+      - db     # فرض بر این که سرویس پایگاه‌داده از قبل تعریف شده است
 
 volumes:
   vault-secrets:

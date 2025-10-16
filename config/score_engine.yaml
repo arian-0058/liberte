@@ -1,0 +1,34 @@
+weights:
+  roi: 0.4
+  volatility: 0.3
+  trend: 0.3
+score:
+  # Clip value for normalising volatility.  Volatility above this
+  # threshold will be treated as 1.0 in the scoring formula.
+  vol_clip: 0.5
+# Frequency (in seconds) with which the scoring loop should refresh
+# its configuration and recompute scores.  Shorter intervals provide
+# fresher data at the cost of increased load on the database.
+update_interval_sec: 60
+prometheus:
+  # Port on which the Prometheus metrics server should listen.
+  port: 8003
+kafka:
+  # List of bootstrap servers for Kafka.  Comma separated host:port pairs.
+  bootstrap_servers: "localhost:9092"
+  topics:
+    filtered_tokens: "filtered_tokens"
+    scored_tokens: "scored_tokens"
+db:
+  # Data Source Name for connecting to PostgreSQL.  For a simple
+  # development environment the default user/password/database works
+  # with the official Postgres image on the default port.
+  dsn: "postgresql://postgres:postgres@localhost:5432/liberte"
+vault:
+  # Example configuration for HashiCorp Vault.  When Vault is not
+  # available the application will fall back to the static values
+  # defined above.
+  url: "http://localhost:8200"
+  token: "root"
+  secrets_paths:
+    score_engine: "score_engine"
